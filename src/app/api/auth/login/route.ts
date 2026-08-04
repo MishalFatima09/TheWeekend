@@ -11,28 +11,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ? AND password = ?').get(email, password) as any;
+    const envAdminEmail = process.env.ADMIN_EMAIL || 'admin@weekendclub.com';
+    const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    // Check if logging in as Admin (via environment variables or DB)
+    let user: any = null;
+
+    if (email === envAdminEmail && password === envAdminPassword) {
+      user = {
+        id: 1,
+        email: envAdminEmail,
+        name: 'Organizer Admin',
+        phone: '+92 325 4204200',
+        role: 'admin'
+      };
+    } else {
+      user = db.prepare('SELECT * FROM users WHERE email = ? AND password = ?').get(email, password) as any;
+    }
 
     if (!user) {
       return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
     }
 
-    // Return safe user object (excluding raw password in response)
     const safeUser = {
       id: user.id,
       email: user.email,
       name: user.name,
-      phone: user.phone,
+      phone: user.phone || '',
       role: user.role
     };
 
     const response = NextResponse.json({ 
       success: true, 
       user: safeUser,
-      message: `Welcome back, ${user.name}!` 
+      message: `Welcome back, ${safeUser.name}!` 
     });
 
-    // Set auth cookie
     response.cookies.set('weekend_user', JSON.stringify(safeUser), {
       httpOnly: false,
       path: '/',

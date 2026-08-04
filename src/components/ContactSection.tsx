@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, Phone, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function ContactSection() {
   const [name, setName] = useState('');
@@ -57,7 +57,7 @@ export default function ContactSection() {
             Have Questions? Write to Us.
           </h2>
           <p className="text-xs text-[#342224] leading-relaxed mb-6">
-            Whether you want to propose a workshop idea, ask about accessibility, or inquire about private group bookings — drop us a message!
+            Whether you want to ask about event timings, group reservations, or payment verification — drop us a message!
           </p>
 
           <div className="space-y-4">
@@ -65,23 +65,15 @@ export default function ContactSection() {
               <Mail className="w-5 h-5 text-[#5A3B38]" />
               <div>
                 <span className="text-[10px] font-mono uppercase text-[#7B5A58] block">Email Us</span>
-                <span className="text-xs font-bold text-[#342224]">hello@weekendclub.org</span>
+                <span className="text-xs font-bold text-[#342224]">shajiaazhar8@gmail.com</span>
               </div>
             </div>
 
             <div className="flex items-center gap-3 bg-[#F2D8D5] p-3.5 rounded-2xl border border-[#5A3B38]">
               <Phone className="w-5 h-5 text-[#5A3B38]" />
               <div>
-                <span className="text-[10px] font-mono uppercase text-[#7B5A58] block">Call / Text</span>
-                <span className="text-xs font-bold text-[#342224]">+1 (555) 749-2026</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 bg-[#F2D8D5] p-3.5 rounded-2xl border border-[#5A3B38]">
-              <MapPin className="w-5 h-5 text-[#5A3B38]" />
-              <div>
-                <span className="text-[10px] font-mono uppercase text-[#7B5A58] block">Main Studio</span>
-                <span className="text-xs font-bold text-[#342224]">14 Studio Alley, Building 4</span>
+                <span className="text-[10px] font-mono uppercase text-[#7B5A58] block">Call / WhatsApp</span>
+                <span className="text-xs font-bold text-[#342224]">03254204200</span>
               </div>
             </div>
           </div>
@@ -141,7 +133,7 @@ export default function ContactSection() {
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Question about 35mm film night..."
+                placeholder="e.g. Question about Outdoor Cinema night..."
                 className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
               />
             </div>
@@ -161,7 +153,7 @@ export default function ContactSection() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 retro-shadow transition-all disabled:opacity-50"
+              className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 retro-shadow transition-all disabled:opacity-50 cursor-pointer"
             >
               <Send className="w-4 h-4" />
               {submitting ? 'Sending Message...' : 'Send Inquiry Message'}

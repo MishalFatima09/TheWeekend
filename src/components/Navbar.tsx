@@ -34,17 +34,20 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
 
         {/* Desktop Navigation Links */}
         <div className="hidden md:flex items-center gap-6 font-medium text-sm text-[#342224]">
-          <Link href="#events" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
+          <Link href="/#events" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
             Events
           </Link>
-          <Link href="#gallery" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
+          <Link href="/#gallery" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
             Gallery
           </Link>
-          <Link href="#about" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
+          <Link href="/#about" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
             About
           </Link>
-          <Link href="#contact" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
+          <Link href="/#contact" className="hover:text-[#5A3B38] hover:underline underline-offset-4 decoration-2 transition-all">
             Contact
+          </Link>
+          <Link href="/my-tickets" className="hover:text-[#5A3B38] font-bold text-[#5A3B38] flex items-center gap-1 hover:underline underline-offset-4 decoration-2 transition-all">
+            <Ticket className="w-4 h-4" /> My Tickets
           </Link>
           {currentUser && currentUser.role === 'admin' && (
             <Link href="/admin" className="bg-[#D97706] text-white px-3 py-1 rounded-full text-xs font-bold border border-[#5A3B38] flex items-center gap-1 hover:rotate-2 transition-transform">
@@ -57,17 +60,13 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
         <div className="hidden md:flex items-center gap-3">
           {currentUser ? (
             <div className="flex items-center gap-2">
-              <Link
-                href="/my-tickets"
-                className="bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all"
-              >
-                <Ticket className="w-4 h-4" />
-                My Tickets
-              </Link>
+              <span className="text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] px-3 py-1 rounded-full border border-[#5A3B38]">
+                {currentUser.name}
+              </span>
               <button
                 onClick={onLogout}
                 title="Log Out"
-                className="p-1.5 rounded-full border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#5A3B38] transition-all"
+                className="p-1.5 rounded-full border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#5A3B38] transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -76,15 +75,9 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onOpenAuth('member')}
-                className="text-xs font-bold text-[#5A3B38] hover:underline px-2"
+                className="bg-[#5A3B38] text-[#FAF0EE] hover:bg-[#7B5A58] border-2 border-[#5A3B38] px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                Sign In
-              </button>
-              <button
-                onClick={() => onOpenAuth('member')}
-                className="bg-[#5A3B38] text-[#FAF0EE] hover:bg-[#7B5A58] border-2 border-[#5A3B38] px-4 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-all"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Join Club
+                <Sparkles className="w-3.5 h-3.5" /> Member Sign In
               </button>
             </div>
           )}
@@ -103,28 +96,35 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
       {mobileMenuOpen && (
         <div className="md:hidden mt-2 bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-3xl p-6 retro-shadow flex flex-col gap-4 text-center">
           <Link
-            href="#events"
+            href="/#events"
             onClick={() => setMobileMenuOpen(false)}
             className="font-bold text-[#342224] py-2 border-b border-[#D7B4A8]"
           >
             Events
           </Link>
           <Link
-            href="#gallery"
+            href="/#gallery"
             onClick={() => setMobileMenuOpen(false)}
             className="font-bold text-[#342224] py-2 border-b border-[#D7B4A8]"
           >
             Gallery
           </Link>
           <Link
-            href="#about"
+            href="/my-tickets"
+            onClick={() => setMobileMenuOpen(false)}
+            className="font-bold text-[#5A3B38] py-2 border-b border-[#D7B4A8] flex items-center justify-center gap-1.5"
+          >
+            <Ticket className="w-4 h-4" /> My Tickets
+          </Link>
+          <Link
+            href="/#about"
             onClick={() => setMobileMenuOpen(false)}
             className="font-bold text-[#342224] py-2 border-b border-[#D7B4A8]"
           >
             About
           </Link>
           <Link
-            href="#contact"
+            href="/#contact"
             onClick={() => setMobileMenuOpen(false)}
             className="font-bold text-[#342224] py-2"
           >
@@ -133,13 +133,6 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
 
           {currentUser ? (
             <div className="flex flex-col gap-2 pt-2">
-              <Link
-                href="/my-tickets"
-                onClick={() => setMobileMenuOpen(false)}
-                className="bg-[#D7B4A8] border-2 border-[#5A3B38] text-[#342224] py-2 rounded-full font-bold flex items-center justify-center gap-2"
-              >
-                <Ticket className="w-4 h-4" /> My Tickets
-              </Link>
               {currentUser.role === 'admin' && (
                 <Link
                   href="/admin"
@@ -151,9 +144,9 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
               )}
               <button
                 onClick={() => { onLogout(); setMobileMenuOpen(false); }}
-                className="text-xs text-[#7B5A58] underline py-1"
+                className="text-xs text-[#7B5A58] underline py-1 cursor-pointer"
               >
-                Log Out
+                Log Out ({currentUser.name})
               </button>
             </div>
           ) : (
@@ -162,7 +155,7 @@ export default function Navbar({ currentUser, onOpenAuth, onLogout }: NavbarProp
                 onClick={() => { onOpenAuth('member'); setMobileMenuOpen(false); }}
                 className="bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] py-2 rounded-full font-bold"
               >
-                Join Club / Sign In
+                Member Sign In
               </button>
             </div>
           )}
