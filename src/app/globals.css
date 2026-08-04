@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-pink: #F2D8D5;
+    --primary-brown: #5A3B38;
+    --secondary-brown: #7B5A58;
+    --accent-beige: #D7B4A8;
+    --dark-text: #342224;
+    --card-cream: #FAF0EE;
+    --card-blush: #FBE5E1;
+    --card-sand: #F5E3DC;
+    --border-color: #5A3B38;
+  }
+
+  body {
+    background-color: var(--bg-pink);
+    color: var(--dark-text);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-serif-display {
+    font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  }
+}
+
+/* Custom 70s Editorial Poster Utilities */
+.retro-border {
+  border: 2px solid #5A3B38;
+}
+
+.retro-border-thick {
+  border: 3px solid #5A3B38;
+}
+
+.retro-shadow {
+  box-shadow: 4px 4px 0px #5A3B38;
+}
+
+.retro-shadow-sm {
+  box-shadow: 2px 2px 0px #5A3B38;
+}
+
+.retro-shadow-lg {
+  box-shadow: 6px 6px 0px #5A3B38;
+}
+
+.retro-card-rotate-1 {
+  transform: rotate(-1.5deg);
+}
+
+.retro-card-rotate-2 {
+  transform: rotate(1.5deg);
+}
+
+.retro-card-rotate-3 {
+  transform: rotate(-2.5deg);
+}
+
+/* Marquee Scrolling Text */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: 200%;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Float Animation for Sticker Elements */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+}
+
+.animate-float {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+@keyframes floatSlowReverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(8px) rotate(-3deg); }
+}
+
+.animate-float-reverse {
+  animation: floatSlowReverse 6s ease-in-out infinite;
+}
+
+/* Perforated Edge for 70s Ticket Pass */
+.ticket-edge-left {
+  background-image: radial-gradient(circle at 0px 10px, transparent 8px, #FAF0EE 9px);
+  background-size: 100% 20px;
+}
+
+.ticket-edge-right {
+  background-image: radial-gradient(circle at 16px 10px, transparent 8px, #FAF0EE 9px);
+  background-size: 100% 20px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #F2D8D5;
+}
+::-webkit-scrollbar-thumb {
+  background: #5A3B38;
+  border-radius: 9999px;
+}
