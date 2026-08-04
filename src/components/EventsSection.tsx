@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, MapPin, Users, Sparkles, Filter, AlertCircle, X, Check, Upload, CreditCard, Copy, CheckCircle2, Clock3 } from 'lucide-react';
+import { Search, Calendar, Clock, MapPin, Sparkles, AlertCircle, X, Check, Upload, CreditCard, Copy, CheckCircle2, Clock3 } from 'lucide-react';
 import TicketPassModal from './TicketPassModal';
 import confetti from 'canvas-confetti';
 
@@ -33,8 +33,6 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
   // Pending Confirmation Modal State
   const [pendingRegistration, setPendingRegistration] = useState<any | null>(null);
   const [confirmedRegistration, setConfirmedRegistration] = useState<any | null>(null);
-
-  const categories = ['All', 'Movie Night', 'Workshop', 'Music Lounge', 'Craft'];
 
   const fetchEvents = async () => {
     try {
@@ -216,7 +214,6 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {events.map((event) => {
             const isFull = event.status === 'full' || event.registered_count >= event.capacity;
-            const remainingSeats = Math.max(0, event.capacity - event.registered_count);
 
             return (
               <div
@@ -270,22 +267,8 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
                       <span>{event.location}</span>
                     </div>
 
-                    {/* Capacity & Button */}
+                    {/* Action Button */}
                     <div className="pt-3 border-t-2 border-dashed border-[#5A3B38]">
-                      <div className="flex items-center justify-between text-xs font-mono text-[#5A3B38] mb-2 font-bold">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" /> Capacity Status
-                        </span>
-                        <span>{event.registered_count} / {event.capacity} ({remainingSeats} seats left)</span>
-                      </div>
-
-                      <div className="w-full bg-[#D7B4A8] border border-[#5A3B38] h-3 rounded-full overflow-hidden mb-4">
-                        <div
-                          className="h-full bg-[#059669] transition-all"
-                          style={{ width: `${Math.min(100, (event.registered_count / event.capacity) * 100)}%` }}
-                        />
-                      </div>
-
                       <button
                         onClick={() => handleOpenRegisterModal(event)}
                         disabled={isFull}
@@ -357,7 +340,7 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
                   <button
                     type="button"
                     onClick={handleCopyAccount}
-                    className="bg-[#5A3B38] text-[#FAF0EE] px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"
+                    className="bg-[#5A3B38] text-[#FAF0EE] px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                   >
                     {copiedAcc ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
                     {copiedAcc ? 'Copied!' : 'Copy'}
@@ -492,7 +475,7 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-sm retro-shadow transition-all disabled:opacity-50"
+                  className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-sm retro-shadow transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'Submitting Receipt...' : 'Submit Registration & Payment Proof'}
                 </button>
@@ -529,7 +512,7 @@ export default function EventsSection({ currentUser, onOpenAuth, triggerRegister
 
             <button
               onClick={() => setPendingRegistration(null)}
-              className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] py-3 rounded-full font-bold text-xs retro-shadow hover:scale-105 transition-all"
+              className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] py-3 rounded-full font-bold text-xs retro-shadow hover:scale-105 transition-all cursor-pointer"
             >
               Done / Return to Home
             </button>
