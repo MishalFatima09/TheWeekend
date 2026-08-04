@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db, { initDb } from '@/lib/db';
+import { sendAdminPendingNotification, sendAttendeeConfirmationNotification } from '@/lib/mailer';
 
 export async function POST(request: Request) {
   try {
@@ -76,7 +77,18 @@ export async function POST(request: Request) {
       FROM registrations r
       JOIN events e ON r.event_id = e.id
       WHERE r.id = ?
-    `).get(result.lastInsertRowid);
+    `).get(result.lastInsertRowid) as any;
+
+    // Send email notification to Admin asynchronously
+    sendAdminPendingNotification({
+      ticket_code: registration.ticket_code,
+      attendee_name: registration.attendee_name,
+      attendee_email: registration.attendee_email,
+      attendee_phone: registration.attendee_phone,
+      guest_count: registration.guest_count,
+      payment_ref: registration.payment_ref,
+      event_title: registration.event_title
+    }).catch(e => console.error("Admin notification mail error:", e));
 
     return NextResponse.json({ 
       success: true, 
@@ -167,7 +179,19 @@ export async function PATCH(request: Request) {
         );
       }
 
-      return NextResponse.json({ success: true, message: 'Payment approved! Ticket pass issued to member.' });
+      // Send confirmation email to Attendee asynchronously
+      sendAttendeeConfirmationNotification({
+        ticket_code: reg.ticket_code,
+        attendee_name: reg.attendee_name,
+        attendee_email: reg.attendee_email,
+        guest_count: reg.guest_count,
+        event_title: event ? event.title : 'Outdoor Cinema & Photobooth Night',
+        event_date: event ? event.date : 'Sunday, Aug 9, 2026',
+        event_time: event ? event.time : '7:00 PM Onwards',
+        event_location: event ? event.location : 'La Kofe Cafe, Citrus City'
+      }).catch(e => console.error("Attendee confirmation mail error:", e));
+
+      return NextResponse.json({ success: true, message: 'Payment approved! Ticket pass issued and confirmation email sent to attendee.' });
     } else if (action === 'reject') {
       db.prepare(`
         UPDATE registrations 
