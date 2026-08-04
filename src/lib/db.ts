@@ -7,11 +7,9 @@ let dbPath: string;
 
 try {
   const localDb = path.join(process.cwd(), 'weekend_club.db');
-  // Check if current directory is writeable
   fs.accessSync(process.cwd(), fs.constants.W_OK);
   dbPath = localDb;
 } catch (e) {
-  // Fallback to OS tmp folder for serverless environments
   dbPath = path.join('/tmp', 'weekend_club.db');
 }
 
@@ -84,23 +82,35 @@ export function initDb() {
     );
   `);
 
-  // Safe table migrations for existing database files
+  // Migration columns check
   try { db.exec("ALTER TABLE events ADD COLUMN ticket_price TEXT DEFAULT '1500'"); } catch (e) {}
   try { db.exec("ALTER TABLE events ADD COLUMN payment_info TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_screenshot TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_ref TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_status TEXT DEFAULT 'pending'"); } catch (e) {}
 
-  // Seed default admin and member users if empty
-  const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count;
-  if (userCount === 0) {
-    const insertUser = db.prepare(`
-      INSERT INTO users (email, password, name, phone, role) 
-      VALUES (?, ?, ?, ?, ?)
-    `);
+  // Environment variable support for Custom Admin credentials
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@weekendclub.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-    insertUser.run('admin@weekendclub.com', 'admin123', 'Organizer Admin', '+1 555 0192', 'admin');
-    insertUser.run('member@weekendclub.com', 'member123', 'Weekend Member', '+1 555 0144', 'member');
+  // Seed default admin and member users
+  const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
+  if (!existingAdmin) {
+    db.prepare(`
+      INSERT INTO users (email, password, name, phone, role) 
+      VALUES (?, ?, 'Organizer Admin', '+92 325 4204200', 'admin')
+    `).run(adminEmail, adminPassword);
+  } else {
+    // Update admin email/password if env vars are provided
+    db.prepare("UPDATE users SET email = ?, password = ? WHERE role = 'admin'").run(adminEmail, adminPassword);
+  }
+
+  const memberCount = (db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'member'").get() as { count: number }).count;
+  if (memberCount === 0) {
+    db.prepare(`
+      INSERT INTO users (email, password, name, phone, role) 
+      VALUES ('member@weekendclub.com', 'member123', 'Weekend Member', '+92 300 1234567', 'member')
+    `).run();
   }
 
   // Clear mock events and seed real event with SadaPay details

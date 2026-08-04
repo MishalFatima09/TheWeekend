@@ -279,13 +279,13 @@ export default function AdminPage() {
               Organizer Access Required
             </h2>
             <p className="text-xs text-[#7B5A58] mt-2 mb-6">
-              Please sign in with an organizer admin account to verify SadaPay payments and manage events.
+              Please sign in with your organizer admin account to verify SadaPay payments and manage events.
             </p>
             <button
               onClick={() => setAuthModalOpen(true)}
               className="bg-[#D97706] text-white border-2 border-[#5A3B38] px-8 py-3.5 rounded-full font-bold text-xs retro-shadow hover:scale-105 transition-all flex items-center justify-center gap-2 mx-auto"
             >
-              <Sparkles className="w-4 h-4" /> Sign In as Demo Admin
+              <Sparkles className="w-4 h-4" /> Sign In as Organizer Admin
             </button>
           </div>
         ) : (

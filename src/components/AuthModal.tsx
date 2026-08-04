@@ -21,35 +21,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
 
   if (!isOpen) return null;
 
-  // 1-Click Quick Demo Account Login Helpers
-  const handleQuickLogin = async (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    try {
-      setSubmitting(true);
-      setErrorMsg('');
-
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: demoEmail, password: demoPass })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setErrorMsg(data.error || 'Login failed.');
-        return;
-      }
-
-      onLoginSuccess(data.user);
-      onClose();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Login error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -105,28 +76,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
           </p>
         </div>
 
-        {/* 1-Click Quick Demo Login Shortcuts Banner */}
-        <div className="bg-[#D7B4A8] border-2 border-[#5A3B38] rounded-2xl p-3 mb-6 text-center">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#342224] font-bold block mb-2">
-            ⚡ Quick Demo Accounts (One-Click)
-          </span>
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => handleQuickLogin('member@weekendclub.com', 'member123')}
-              className="bg-[#FAF0EE] border border-[#5A3B38] hover:bg-[#5A3B38] hover:text-white px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all"
-            >
-              <User className="w-3.5 h-3.5" /> Demo Member
-            </button>
-
-            <button
-              onClick={() => handleQuickLogin('admin@weekendclub.com', 'admin123')}
-              className="bg-[#D97706] text-white border border-[#5A3B38] hover:bg-[#B45309] px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" /> Demo Admin
-            </button>
-          </div>
-        </div>
-
         {errorMsg && (
           <div className="bg-[#FEE2E2] border-2 border-[#DC2626] text-[#991B1B] p-3 rounded-2xl text-xs font-bold mb-4 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -156,7 +105,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="member@weekendclub.com"
+              placeholder="member@domain.com"
               className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
             />
           </div>
@@ -180,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 555 0192"
+                placeholder="+92 300 1234567"
                 className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
               />
             </div>
@@ -189,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 retro-shadow transition-all disabled:opacity-50 mt-2"
+            className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 retro-shadow transition-all disabled:opacity-50 mt-2 cursor-pointer"
           >
             <span>{mode === 'login' ? 'Sign In to Account' : 'Create Member Account'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -212,7 +161,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
               Already have an account?{' '}
               <button
                 onClick={() => setMode('login')}
-                className="font-bold text-[#5A3B38] underline"
+                className="font-bold text-[#5A3B38] underline border-none bg-transparent"
               >
                 Sign in
               </button>
