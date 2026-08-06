@@ -70,6 +70,8 @@ export function initDb() {
       payment_status TEXT NOT NULL DEFAULT 'pending',
       notes TEXT,
       status TEXT NOT NULL DEFAULT 'pending_approval',
+      checked_in INTEGER DEFAULT 0,
+      checked_in_at TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     );
@@ -94,6 +96,8 @@ export function initDb() {
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_screenshot TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_ref TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_status TEXT DEFAULT 'pending'"); } catch (e) {}
+  try { db.exec("ALTER TABLE registrations ADD COLUMN checked_in INTEGER DEFAULT 0"); } catch (e) {}
+  try { db.exec("ALTER TABLE registrations ADD COLUMN checked_in_at TEXT"); } catch (e) {}
 
   // Environment variable support for Custom Admin credentials
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@weekendclub.com';
@@ -107,7 +111,6 @@ export function initDb() {
       VALUES (?, ?, 'Organizer Admin', '+92 325 4204200', 'admin', 1)
     `).run(adminEmail, adminPassword);
   } else {
-    // Update admin email/password if env vars are provided
     db.prepare("UPDATE users SET email = ?, password = ?, email_verified = 1 WHERE role = 'admin'").run(adminEmail, adminPassword);
   }
 

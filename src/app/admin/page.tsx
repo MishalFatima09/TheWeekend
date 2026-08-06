@@ -9,7 +9,7 @@ import TicketPassModal from '@/components/TicketPassModal';
 import { 
   ShieldCheck, Plus, Edit2, Trash2, Users, Calendar, MapPin, 
   MessageSquare, CheckCircle2, AlertCircle, ArrowLeft, X, Sparkles, 
-  CreditCard, ImageIcon, Check, XCircle, Clock3, Printer, Ticket 
+  CreditCard, ImageIcon, Check, XCircle, Clock3, Printer, Ticket, QrCode, Search 
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -19,7 +19,12 @@ export default function AdminPage() {
   const [allRegistrations, setAllRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'events' | 'inquiries'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'checkin' | 'events' | 'inquiries'>('pending');
+
+  // Door Check-In scanner state
+  const [scanCodeInput, setScanCodeInput] = useState('');
+  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; registration?: any; alreadyCheckedIn?: boolean } | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   // Screenshot Preview Modal
   const [previewSS, setPreviewSS] = useState<string | null>(null);
@@ -121,6 +126,39 @@ export default function AdminPage() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDoorCheckIn = async (codeToSubmit?: string, idToSubmit?: number) => {
+    const code = codeToSubmit || scanCodeInput;
+    if (!code && !idToSubmit) return;
+    try {
+      setScanning(true);
+      setScanResult(null);
+
+      const res = await fetch('/api/registrations/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, id: idToSubmit })
+      });
+
+      const data = await res.json();
+      setScanResult({
+        success: data.success,
+        message: data.message || data.error || 'Check-in processed',
+        registration: data.registration,
+        alreadyCheckedIn: data.alreadyCheckedIn
+      });
+
+      fetchAllRegistrations();
+      if (codeToSubmit === undefined) setScanCodeInput('');
+    } catch (err: any) {
+      setScanResult({
+        success: false,
+        message: err.message || 'Check-in error'
+      });
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -232,6 +270,7 @@ export default function AdminPage() {
 
   const pendingRegistrations = allRegistrations.filter(r => r.payment_status === 'pending');
   const approvedRegistrations = allRegistrations.filter(r => r.payment_status === 'approved' || r.status === 'confirmed');
+  const checkedInCount = approvedRegistrations.filter(r => r.checked_in === 1).length;
 
   return (
     <main className="min-h-screen flex flex-col bg-[#F2D8D5] text-[#342224]">
@@ -304,6 +343,17 @@ export default function AdminPage() {
                 }`}
               >
                 <Clock3 className="w-4 h-4 text-[#D97706]" /> Pending Approvals ({pendingRegistrations.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('checkin')}
+                className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'checkin'
+                    ? 'bg-[#D97706] text-white border-[#5A3B38] retro-shadow-sm'
+                    : 'bg-[#FAF0EE] text-[#342224] border-[#5A3B38]'
+                }`}
+              >
+                <QrCode className="w-4 h-4" /> 🚪 Door Ticket Scanner ({checkedInCount}/{approvedRegistrations.length} Arrived)
               </button>
 
               <button
@@ -405,7 +455,7 @@ export default function AdminPage() {
                         
                         <button
                           onClick={() => handleApprovePayment(reg.id, 'reject')}
-                          className="p-2.5 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white rounded-full transition-all cursor-pointer"
+                          className="p-2.5 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-[#FAF0EE] rounded-full transition-all cursor-pointer"
                           title="Reject Payment"
                         >
                           <XCircle className="w-4 h-4" />
@@ -417,7 +467,96 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* TAB 2: APPROVED TICKETS TAB */}
+            {/* TAB 2: DOOR TICKET SCANNER & CHECK-IN */}
+            {activeTab === 'checkin' && (
+              <div className="space-y-6">
+                
+                {/* Live Door Attendance Counter */}
+                <div className="bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-[28px] p-6 retro-shadow flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#7B5A58] font-bold">
+                      Real-Time Event Entrance Tracker
+                    </span>
+                    <h3 className="font-serif-display text-2xl font-black text-[#5A3B38] mt-0.5">
+                      Door Attendance & Entry Verification
+                    </h3>
+                  </div>
+                  <div className="bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] px-6 py-3 rounded-2xl text-center retro-shadow-sm">
+                    <span className="text-2xl font-black font-mono">{checkedInCount} / {approvedRegistrations.length}</span>
+                    <span className="block text-[10px] uppercase tracking-wider font-mono text-[#D7B4A8]">Attendees Arrived</span>
+                  </div>
+                </div>
+
+                {/* Ticket Scanner Input Box */}
+                <div className="bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-[28px] p-6 md:p-8 retro-shadow max-w-2xl mx-auto text-center">
+                  <QrCode className="w-10 h-10 text-[#5A3B38] mx-auto mb-3" />
+                  <h3 className="font-serif-display font-bold text-xl text-[#5A3B38] mb-1">
+                    Scan or Type Ticket Pass Code
+                  </h3>
+                  <p className="text-xs text-[#7B5A58] mb-6 font-mono">
+                    Type or scan ticket code (e.g. WKD-8491-A) to verify one-time entry and block duplicates.
+                  </p>
+
+                  <form onSubmit={(e) => { e.preventDefault(); handleDoorCheckIn(); }} className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. WKD-8921-A or attendee email"
+                      value={scanCodeInput}
+                      onChange={(e) => setScanCodeInput(e.target.value)}
+                      className="flex-1 bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-5 py-3 text-sm font-mono font-bold text-[#5A3B38] uppercase focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={scanning}
+                      className="bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] px-8 py-3 rounded-full font-bold text-xs retro-shadow transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {scanning ? 'Validating...' : 'Check In Attendee'}
+                    </button>
+                  </form>
+                </div>
+
+                {/* SCAN RESULT BANNER */}
+                {scanResult && (
+                  <div className={`border-3 border-[#5A3B38] rounded-[28px] p-6 retro-shadow text-center max-w-2xl mx-auto animate-in zoom-in-95 duration-200 ${
+                    scanResult.success
+                      ? 'bg-[#D1FAE5] border-[#059669] text-[#065F46]'
+                      : 'bg-[#FEE2E2] border-[#DC2626] text-[#991B1B]'
+                  }`}>
+                    {scanResult.success ? (
+                      <CheckCircle2 className="w-12 h-12 text-[#059669] mx-auto mb-2" />
+                    ) : (
+                      <XCircle className="w-12 h-12 text-[#DC2626] mx-auto mb-2 animate-bounce" />
+                    )}
+
+                    <h4 className="font-serif-display font-black text-2xl mb-1">
+                      {scanResult.success ? '🟢 VALID TICKET PASS — ENTRY GRANTED!' : '⛔ TICKET DENIED / WARNING!'}
+                    </h4>
+
+                    <p className="text-sm font-bold font-mono my-2">
+                      {scanResult.message}
+                    </p>
+
+                    {scanResult.registration && (
+                      <div className="bg-white/80 border border-current rounded-2xl p-4 mt-3 text-left text-xs font-mono space-y-1">
+                        <div>Attendee: <strong className="text-base">{scanResult.registration.attendee_name}</strong></div>
+                        <div>Ticket Code: <strong>{scanResult.registration.ticket_code}</strong></div>
+                        <div>Seats Reserved: <strong>{scanResult.registration.guest_count} spot(s)</strong></div>
+                        <div>Email & Phone: {scanResult.registration.attendee_email} ({scanResult.registration.attendee_phone})</div>
+                        {scanResult.registration.checked_in_at && (
+                          <div className="text-red-700 font-bold pt-1">
+                            ⏰ Checked In Timestamp: {scanResult.registration.checked_in_at}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* TAB 3: APPROVED TICKETS TAB */}
             {activeTab === 'approved' && (
               <div className="space-y-4">
                 {approvedRegistrations.length === 0 ? (
@@ -427,66 +566,92 @@ export default function AdminPage() {
                     <p className="text-xs mt-1">Once you approve pending payments, confirmed tickets will appear here.</p>
                   </div>
                 ) : (
-                  approvedRegistrations.map((reg) => (
-                    <div
-                      key={reg.id}
-                      className="bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 retro-shadow border-l-8 border-l-[#059669] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
-                    >
-                      <div className="flex items-start gap-4">
-                        {reg.payment_screenshot ? (
-                          <div 
-                            onClick={() => setPreviewSS(reg.payment_screenshot)}
-                            className="relative w-20 h-24 rounded-2xl border-2 border-[#5A3B38] overflow-hidden bg-black/10 cursor-pointer group flex-shrink-0"
-                          >
-                            <img src={reg.payment_screenshot} alt="SS" className="w-full h-full object-cover group-hover:opacity-80" />
-                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                              View SS
+                  approvedRegistrations.map((reg) => {
+                    const isCheckedIn = reg.checked_in === 1;
+
+                    return (
+                      <div
+                        key={reg.id}
+                        className={`bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 retro-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-6 ${
+                          isCheckedIn ? 'opacity-80 border-l-8 border-l-[#342224]' : 'border-l-8 border-l-[#059669]'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          {reg.payment_screenshot ? (
+                            <div 
+                              onClick={() => setPreviewSS(reg.payment_screenshot)}
+                              className="relative w-20 h-24 rounded-2xl border-2 border-[#5A3B38] overflow-hidden bg-black/10 cursor-pointer group flex-shrink-0"
+                            >
+                              <img src={reg.payment_screenshot} alt="SS" className="w-full h-full object-cover group-hover:opacity-80" />
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                View SS
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-20 h-24 rounded-2xl border-2 border-[#5A3B38] bg-[#D7B4A8] flex items-center justify-center text-xs font-bold text-[#5A3B38] flex-shrink-0">
+                              Approved
+                            </div>
+                          )}
+
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] border border-[#5A3B38] px-2.5 py-0.5 rounded-full">
+                                {reg.ticket_code}
+                              </span>
+
+                              {isCheckedIn ? (
+                                <span className="bg-[#342224] text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] flex items-center gap-1">
+                                  🔴 REDEEMED / CHECKED IN at {reg.checked_in_at}
+                                </span>
+                              ) : (
+                                <span className="bg-[#059669] text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] flex items-center gap-1">
+                                  🟢 VALID (NOT USED YET)
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="font-serif-display font-black text-xl text-[#5A3B38]">
+                              {reg.attendee_name}
+                            </h3>
+
+                            <div className="text-xs text-[#7B5A58] space-y-0.5 font-mono">
+                              <div>📧 {reg.attendee_email} • 📞 {reg.attendee_phone}</div>
+                              <div>Event: <strong className="text-[#342224]">{reg.event_title}</strong></div>
+                              <div>Seats: <strong>{reg.guest_count} spot(s)</strong> • Paid: <strong className="text-[#059669]">Rs. {1500 * reg.guest_count}</strong></div>
+                              {reg.payment_ref && <div>Sender / Ref ID: <strong className="text-[#342224]">{reg.payment_ref}</strong></div>}
                             </div>
                           </div>
-                        ) : (
-                          <div className="w-20 h-24 rounded-2xl border-2 border-[#5A3B38] bg-[#D7B4A8] flex items-center justify-center text-xs font-bold text-[#5A3B38] flex-shrink-0">
-                            Approved
-                          </div>
-                        )}
+                        </div>
 
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] border border-[#5A3B38] px-2.5 py-0.5 rounded-full">
-                              {reg.ticket_code}
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#D7B4A8]">
+                          {!isCheckedIn ? (
+                            <button
+                              onClick={() => handleDoorCheckIn(reg.ticket_code)}
+                              className="bg-[#059669] text-white border-2 border-[#5A3B38] hover:bg-[#047857] px-4 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                            >
+                              <QrCode className="w-4 h-4" /> Check In Door Entry
+                            </button>
+                          ) : (
+                            <span className="text-xs font-bold font-mono text-[#7B5A58] bg-[#F2D8D5] border border-[#5A3B38] px-3 py-1 rounded-full">
+                              ✓ Entry Granted
                             </span>
-                            <span className="bg-[#059669] text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Approved & Issued
-                            </span>
-                          </div>
+                          )}
 
-                          <h3 className="font-serif-display font-black text-xl text-[#5A3B38]">
-                            {reg.attendee_name}
-                          </h3>
-
-                          <div className="text-xs text-[#7B5A58] space-y-0.5 font-mono">
-                            <div>📧 {reg.attendee_email} • 📞 {reg.attendee_phone}</div>
-                            <div>Event: <strong className="text-[#342224]">{reg.event_title}</strong></div>
-                            <div>Seats: <strong>{reg.guest_count} spot(s)</strong> • Paid: <strong className="text-[#059669]">Rs. {1500 * reg.guest_count}</strong></div>
-                            {reg.payment_ref && <div>Sender / Ref ID: <strong className="text-[#342224]">{reg.payment_ref}</strong></div>}
-                          </div>
+                          <button
+                            onClick={() => setSelectedTicketForPass(reg)}
+                            className="bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-4 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Printer className="w-4 h-4" /> View Ticket
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#D7B4A8]">
-                        <button
-                          onClick={() => setSelectedTicketForPass(reg)}
-                          className="bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Printer className="w-4 h-4" /> View Ticket Pass
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
 
-            {/* TAB 3: EVENTS MANAGEMENT */}
+            {/* TAB 4: EVENTS MANAGEMENT */}
             {activeTab === 'events' && (
               <div className="grid grid-cols-1 gap-6">
                 {events.map((ev) => (
@@ -550,7 +715,7 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* TAB 4: INQUIRIES */}
+            {/* TAB 5: INQUIRIES */}
             {activeTab === 'inquiries' && (
               <div className="grid grid-cols-1 gap-4">
                 {inquiries.length === 0 ? (
@@ -566,7 +731,7 @@ export default function AdminPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] ${
-                            inq.status === 'replied' ? 'bg-[#059669] text-white' : 'bg-[#D97706] text-white'
+                            inq.status === 'replied' ? 'bg-[#059669] text-white' : 'bg-[#D97706] text-[#FAF0EE]'
                           }`}>
                             {inq.status}
                           </span>
