@@ -5,23 +5,25 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthModal from '@/components/AuthModal';
+import TicketPassModal from '@/components/TicketPassModal';
 import { 
   ShieldCheck, Plus, Edit2, Trash2, Users, Calendar, MapPin, 
   MessageSquare, CheckCircle2, AlertCircle, ArrowLeft, X, Sparkles, 
-  CreditCard, ImageIcon, Check, XCircle, Clock3 
+  CreditCard, ImageIcon, Check, XCircle, Clock3, Printer, Ticket 
 } from 'lucide-react';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
-  const [pendingRegistrations, setPendingRegistrations] = useState<any[]>([]);
+  const [allRegistrations, setAllRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'payments' | 'events' | 'inquiries'>('payments');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'events' | 'inquiries'>('pending');
 
   // Screenshot Preview Modal
   const [previewSS, setPreviewSS] = useState<string | null>(null);
+  const [selectedTicketForPass, setSelectedTicketForPass] = useState<any | null>(null);
 
   // Event Modal Form state (Create/Edit)
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -56,7 +58,7 @@ export default function AdminPage() {
         if (data.user.role === 'admin') {
           fetchEvents();
           fetchInquiries();
-          fetchPendingPayments();
+          fetchAllRegistrations();
         }
       } else {
         setLoading(false);
@@ -89,12 +91,12 @@ export default function AdminPage() {
     }
   };
 
-  const fetchPendingPayments = async () => {
+  const fetchAllRegistrations = async () => {
     try {
       const res = await fetch('/api/registrations');
       const data = await res.json();
       if (data.success) {
-        setPendingRegistrations(data.registrations);
+        setAllRegistrations(data.registrations);
       }
     } catch (e) {
       console.error(e);
@@ -114,7 +116,7 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchPendingPayments();
+        fetchAllRegistrations();
         fetchEvents();
       }
     } catch (e) {
@@ -228,7 +230,8 @@ export default function AdminPage() {
     }
   };
 
-  const pendingCount = pendingRegistrations.filter(r => r.payment_status === 'pending').length;
+  const pendingRegistrations = allRegistrations.filter(r => r.payment_status === 'pending');
+  const approvedRegistrations = allRegistrations.filter(r => r.payment_status === 'approved' || r.status === 'confirmed');
 
   return (
     <main className="min-h-screen flex flex-col bg-[#F2D8D5] text-[#342224]">
@@ -265,7 +268,7 @@ export default function AdminPage() {
           {currentUser && currentUser.role === 'admin' && (
             <button
               onClick={handleOpenCreateModal}
-              className="bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] px-6 py-3 rounded-full font-bold text-xs flex items-center gap-2 retro-shadow hover:scale-105 transition-all self-start md:self-auto"
+              className="bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] px-6 py-3 rounded-full font-bold text-xs flex items-center gap-2 retro-shadow hover:scale-105 transition-all self-start md:self-auto cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Create New Event
             </button>
@@ -283,7 +286,7 @@ export default function AdminPage() {
             </p>
             <button
               onClick={() => setAuthModalOpen(true)}
-              className="bg-[#D97706] text-white border-2 border-[#5A3B38] px-8 py-3.5 rounded-full font-bold text-xs retro-shadow hover:scale-105 transition-all flex items-center justify-center gap-2 mx-auto"
+              className="bg-[#D97706] text-white border-2 border-[#5A3B38] px-8 py-3.5 rounded-full font-bold text-xs retro-shadow hover:scale-105 transition-all flex items-center justify-center gap-2 mx-auto cursor-pointer"
             >
               <Sparkles className="w-4 h-4" /> Sign In as Organizer Admin
             </button>
@@ -293,30 +296,41 @@ export default function AdminPage() {
             {/* Navigation Tabs */}
             <div className="flex flex-wrap items-center gap-3 mb-8 border-b-2 border-[#5A3B38] pb-4">
               <button
-                onClick={() => setActiveTab('payments')}
-                className={`px-5 py-2 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 ${
-                  activeTab === 'payments'
+                onClick={() => setActiveTab('pending')}
+                className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'pending'
                     ? 'bg-[#5A3B38] text-[#FAF0EE] border-[#5A3B38] retro-shadow-sm'
                     : 'bg-[#FAF0EE] text-[#342224] border-[#5A3B38]'
                 }`}
               >
-                <CreditCard className="w-4 h-4" /> Payment Screenshot Approvals ({pendingCount} Pending)
+                <Clock3 className="w-4 h-4 text-[#D97706]" /> Pending Approvals ({pendingRegistrations.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'approved'
+                    ? 'bg-[#5A3B38] text-[#FAF0EE] border-[#5A3B38] retro-shadow-sm'
+                    : 'bg-[#FAF0EE] text-[#342224] border-[#5A3B38]'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#059669]" /> Approved Tickets ({approvedRegistrations.length})
               </button>
 
               <button
                 onClick={() => setActiveTab('events')}
-                className={`px-5 py-2 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'events'
                     ? 'bg-[#5A3B38] text-[#FAF0EE] border-[#5A3B38] retro-shadow-sm'
                     : 'bg-[#FAF0EE] text-[#342224] border-[#5A3B38]'
                 }`}
               >
-                <Calendar className="w-4 h-4 text-[#FAF0EE]" /> Manage Events ({events.length})
+                <Calendar className="w-4 h-4" /> Manage Events ({events.length})
               </button>
 
               <button
                 onClick={() => setActiveTab('inquiries')}
-                className={`px-5 py-2 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'inquiries'
                     ? 'bg-[#5A3B38] text-[#FAF0EE] border-[#5A3B38] retro-shadow-sm'
                     : 'bg-[#FAF0EE] text-[#342224] border-[#5A3B38]'
@@ -326,106 +340,153 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* TAB 1: PAYMENT SCREENSHOT APPROVALS */}
-            {activeTab === 'payments' && (
+            {/* TAB 1: PENDING APPROVALS */}
+            {activeTab === 'pending' && (
               <div className="space-y-4">
                 {pendingRegistrations.length === 0 ? (
                   <div className="bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-3xl p-12 text-center text-[#7B5A58] retro-shadow">
                     <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-[#059669]" />
-                    <h3 className="font-serif-display font-bold text-xl text-[#5A3B38]">No Pending Payments</h3>
-                    <p className="text-xs mt-1">All SadaPay transfer screenshots have been processed.</p>
+                    <h3 className="font-serif-display font-bold text-xl text-[#5A3B38]">No Pending Approvals</h3>
+                    <p className="text-xs mt-1">All SadaPay transfer screenshots have been reviewed and processed.</p>
                   </div>
                 ) : (
-                  pendingRegistrations.map((reg) => {
-                    const isPending = reg.payment_status === 'pending';
-
-                    return (
-                      <div
-                        key={reg.id}
-                        className={`bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 retro-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-6 ${
-                          isPending ? 'border-l-8 border-l-[#D97706]' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-4">
-                          {/* Payment Screenshot Thumbnail */}
-                          {reg.payment_screenshot ? (
-                            <div 
-                              onClick={() => setPreviewSS(reg.payment_screenshot)}
-                              className="relative w-20 h-24 rounded-2xl border-2 border-[#5A3B38] overflow-hidden bg-black/10 cursor-pointer group flex-shrink-0"
-                            >
-                              <img src={reg.payment_screenshot} alt="SS" className="w-full h-full object-cover group-hover:opacity-80" />
-                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                Preview
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-20 h-24 rounded-2xl border-2 border-[#5A3B38] bg-[#D7B4A8] flex items-center justify-center text-xs font-bold text-[#5A3B38] flex-shrink-0">
-                              No SS
-                            </div>
-                          )}
-
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] border border-[#5A3B38] px-2.5 py-0.5 rounded-full">
-                                {reg.ticket_code}
-                              </span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] ${
-                                reg.payment_status === 'approved'
-                                  ? 'bg-[#059669] text-white'
-                                  : reg.payment_status === 'rejected'
-                                  ? 'bg-[#DC2626] text-white'
-                                  : 'bg-[#D97706] text-white'
-                              }`}>
-                                {reg.payment_status === 'pending' ? '⏳ Pending SadaPay Verification' : reg.payment_status}
-                              </span>
-                            </div>
-
-                            <h3 className="font-serif-display font-black text-xl text-[#5A3B38]">
-                              {reg.attendee_name}
-                            </h3>
-
-                            <div className="text-xs text-[#7B5A58] space-y-0.5 font-mono">
-                              <div>📧 {reg.attendee_email} • 📞 {reg.attendee_phone}</div>
-                              <div>Event: <strong className="text-[#342224]">{reg.event_title}</strong></div>
-                              <div>Seats: <strong>{reg.guest_count} spot(s)</strong> • Amount: <strong className="text-[#5A3B38]">Rs. {1500 * reg.guest_count}</strong></div>
-                              {reg.payment_ref && <div>Sender / Ref ID: <strong className="text-[#342224]">{reg.payment_ref}</strong></div>}
+                  pendingRegistrations.map((reg) => (
+                    <div
+                      key={reg.id}
+                      className="bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 retro-shadow border-l-8 border-l-[#D97706] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        {reg.payment_screenshot ? (
+                          <div 
+                            onClick={() => setPreviewSS(reg.payment_screenshot)}
+                            className="relative w-20 h-24 rounded-2xl border-2 border-[#5A3B38] overflow-hidden bg-black/10 cursor-pointer group flex-shrink-0"
+                          >
+                            <img src={reg.payment_screenshot} alt="SS" className="w-full h-full object-cover group-hover:opacity-80" />
+                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                              Preview
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="w-20 h-24 rounded-2xl border-2 border-[#5A3B38] bg-[#D7B4A8] flex items-center justify-center text-xs font-bold text-[#5A3B38] flex-shrink-0">
+                            No SS
+                          </div>
+                        )}
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#D7B4A8]">
-                          {isPending ? (
-                            <>
-                              <button
-                                onClick={() => handleApprovePayment(reg.id, 'approve')}
-                                className="flex-1 md:flex-initial bg-[#059669] text-white border-2 border-[#5A3B38] hover:bg-[#047857] px-5 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 retro-shadow-sm transition-all"
-                              >
-                                <Check className="w-4 h-4" /> Approve & Issue Ticket
-                              </button>
-                              
-                              <button
-                                onClick={() => handleApprovePayment(reg.id, 'reject')}
-                                className="p-2.5 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white rounded-full transition-all"
-                                title="Reject Payment"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-xs font-bold font-mono text-[#059669] bg-[#D1FAE5] border border-[#059669] px-4 py-1.5 rounded-full">
-                              ✓ Ticket Pass Issued
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] border border-[#5A3B38] px-2.5 py-0.5 rounded-full">
+                              {reg.ticket_code}
                             </span>
-                          )}
+                            <span className="bg-[#D97706] text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38]">
+                              ⏳ Pending SadaPay Verification
+                            </span>
+                          </div>
+
+                          <h3 className="font-serif-display font-black text-xl text-[#5A3B38]">
+                            {reg.attendee_name}
+                          </h3>
+
+                          <div className="text-xs text-[#7B5A58] space-y-0.5 font-mono">
+                            <div>📧 {reg.attendee_email} • 📞 {reg.attendee_phone}</div>
+                            <div>Event: <strong className="text-[#342224]">{reg.event_title}</strong></div>
+                            <div>Seats: <strong>{reg.guest_count} spot(s)</strong> • Amount: <strong className="text-[#5A3B38]">Rs. {1500 * reg.guest_count}</strong></div>
+                            {reg.payment_ref && <div>Sender / Ref ID: <strong className="text-[#342224]">{reg.payment_ref}</strong></div>}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })
+
+                      <div className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#D7B4A8]">
+                        <button
+                          onClick={() => handleApprovePayment(reg.id, 'approve')}
+                          className="flex-1 md:flex-initial bg-[#059669] text-white border-2 border-[#5A3B38] hover:bg-[#047857] px-5 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 retro-shadow-sm transition-all cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" /> Approve & Issue Ticket
+                        </button>
+                        
+                        <button
+                          onClick={() => handleApprovePayment(reg.id, 'reject')}
+                          className="p-2.5 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white rounded-full transition-all cursor-pointer"
+                          title="Reject Payment"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
 
-            {/* TAB 2: EVENTS MANAGEMENT */}
+            {/* TAB 2: APPROVED TICKETS TAB */}
+            {activeTab === 'approved' && (
+              <div className="space-y-4">
+                {approvedRegistrations.length === 0 ? (
+                  <div className="bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-3xl p-12 text-center text-[#7B5A58] retro-shadow">
+                    <Ticket className="w-10 h-10 mx-auto mb-2 text-[#5A3B38]" />
+                    <h3 className="font-serif-display font-bold text-xl text-[#5A3B38]">No Approved Tickets Yet</h3>
+                    <p className="text-xs mt-1">Once you approve pending payments, confirmed tickets will appear here.</p>
+                  </div>
+                ) : (
+                  approvedRegistrations.map((reg) => (
+                    <div
+                      key={reg.id}
+                      className="bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 retro-shadow border-l-8 border-l-[#059669] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        {reg.payment_screenshot ? (
+                          <div 
+                            onClick={() => setPreviewSS(reg.payment_screenshot)}
+                            className="relative w-20 h-24 rounded-2xl border-2 border-[#5A3B38] overflow-hidden bg-black/10 cursor-pointer group flex-shrink-0"
+                          >
+                            <img src={reg.payment_screenshot} alt="SS" className="w-full h-full object-cover group-hover:opacity-80" />
+                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                              View SS
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-20 h-24 rounded-2xl border-2 border-[#5A3B38] bg-[#D7B4A8] flex items-center justify-center text-xs font-bold text-[#5A3B38] flex-shrink-0">
+                            Approved
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#5A3B38] bg-[#D7B4A8] border border-[#5A3B38] px-2.5 py-0.5 rounded-full">
+                              {reg.ticket_code}
+                            </span>
+                            <span className="bg-[#059669] text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border border-[#5A3B38] flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Approved & Issued
+                            </span>
+                          </div>
+
+                          <h3 className="font-serif-display font-black text-xl text-[#5A3B38]">
+                            {reg.attendee_name}
+                          </h3>
+
+                          <div className="text-xs text-[#7B5A58] space-y-0.5 font-mono">
+                            <div>📧 {reg.attendee_email} • 📞 {reg.attendee_phone}</div>
+                            <div>Event: <strong className="text-[#342224]">{reg.event_title}</strong></div>
+                            <div>Seats: <strong>{reg.guest_count} spot(s)</strong> • Paid: <strong className="text-[#059669]">Rs. {1500 * reg.guest_count}</strong></div>
+                            {reg.payment_ref && <div>Sender / Ref ID: <strong className="text-[#342224]">{reg.payment_ref}</strong></div>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-[#D7B4A8]">
+                        <button
+                          onClick={() => setSelectedTicketForPass(reg)}
+                          className="bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          <Printer className="w-4 h-4" /> View Ticket Pass
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: EVENTS MANAGEMENT */}
             {activeTab === 'events' && (
               <div className="grid grid-cols-1 gap-6">
                 {events.map((ev) => (
@@ -463,14 +524,14 @@ export default function AdminPage() {
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                       <button
                         onClick={() => handleViewAttendees(ev)}
-                        className="flex-1 md:flex-initial bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-4 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                        className="flex-1 md:flex-initial bg-[#D7B4A8] border-2 border-[#5A3B38] hover:bg-[#5A3B38] hover:text-[#FAF0EE] text-[#342224] px-4 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       >
                         <Users className="w-3.5 h-3.5" /> View Roster ({ev.registered_count})
                       </button>
 
                       <button
                         onClick={() => handleOpenEditModal(ev)}
-                        className="p-2 bg-[#FAF0EE] border-2 border-[#5A3B38] text-[#5A3B38] hover:bg-[#5A3B38] hover:text-white rounded-full transition-all"
+                        className="p-2 bg-[#FAF0EE] border-2 border-[#5A3B38] text-[#5A3B38] hover:bg-[#5A3B38] hover:text-white rounded-full transition-all cursor-pointer"
                         title="Edit Event"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -478,7 +539,7 @@ export default function AdminPage() {
 
                       <button
                         onClick={() => handleDeleteEvent(ev.id)}
-                        className="p-2 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white rounded-full transition-all"
+                        className="p-2 bg-[#FEE2E2] border-2 border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white rounded-full transition-all cursor-pointer"
                         title="Delete Event"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -489,7 +550,7 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* TAB 3: INQUIRIES */}
+            {/* TAB 4: INQUIRIES */}
             {activeTab === 'inquiries' && (
               <div className="grid grid-cols-1 gap-4">
                 {inquiries.length === 0 ? (
@@ -537,7 +598,7 @@ export default function AdminPage() {
           <div className="relative bg-[#FAF0EE] border-3 border-[#5A3B38] rounded-3xl p-6 max-w-lg w-full">
             <button
               onClick={() => setPreviewSS(null)}
-              className="absolute top-4 right-4 bg-[#F2D8D5] border border-[#5A3B38] p-1.5 rounded-full"
+              className="absolute top-4 right-4 bg-[#F2D8D5] border border-[#5A3B38] p-1.5 rounded-full cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -547,6 +608,14 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* TICKET PASS MODAL PREVIEW FOR ADMIN */}
+      {selectedTicketForPass && (
+        <TicketPassModal
+          registration={selectedTicketForPass}
+          onClose={() => setSelectedTicketForPass(null)}
+        />
+      )}
+
       {/* VIEW ATTENDEES MODAL */}
       {attendeeModalOpen && selectedEventForAttendees && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -554,7 +623,7 @@ export default function AdminPage() {
             
             <button
               onClick={() => setAttendeeModalOpen(false)}
-              className="absolute top-4 right-4 bg-[#F2D8D5] border-2 border-[#5A3B38] text-[#5A3B38] p-2 rounded-full hover:rotate-90 transition-transform"
+              className="absolute top-4 right-4 bg-[#F2D8D5] border-2 border-[#5A3B38] text-[#5A3B38] p-2 rounded-full hover:rotate-90 transition-transform cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -610,7 +679,7 @@ export default function AdminPage() {
             if (user.role === 'admin') {
               fetchEvents();
               fetchInquiries();
-              fetchPendingPayments();
+              fetchAllRegistrations();
             }
           }}
         />

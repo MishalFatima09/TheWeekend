@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 
-// Configure SMTP transport with env fallback
 const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
 const smtpPort = parseInt(process.env.SMTP_PORT || '587');
 const smtpUser = process.env.SMTP_USER || '';
@@ -19,6 +18,60 @@ if (smtpUser && smtpPass) {
       pass: smtpPass,
     },
   });
+}
+
+/**
+ * Send 6-Digit Email Verification OTP Code
+ */
+export async function sendVerificationOtpEmail(toEmail: string, name: string, otpCode: string) {
+  const subject = `🔐 ${otpCode} is your Verification Code - The Weekend Club`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; background-color: #F2D8D5; padding: 24px; color: #342224;">
+      <div style="max-width: 520px; margin: 0 auto; background: #FAF0EE; border: 3px solid #5A3B38; border-radius: 24px; padding: 32px; box-shadow: 4px 4px 0px #5A3B38; text-align: center;">
+        
+        <div style="width: 48px; h-48px; background: #5A3B38; color: #FAF0EE; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin-bottom: 12px; padding: 10px;">
+          WKD
+        </div>
+
+        <h2 style="font-size: 24px; color: #5A3B38; margin: 8px 0 12px 0;">
+          Verify Your Email Address
+        </h2>
+
+        <p style="font-size: 14px; color: #342224; line-height: 1.5; margin-bottom: 20px;">
+          Hi <strong>${name}</strong>, thank you for joining The Weekend Club! Please enter the 6-digit verification code below to activate your member account:
+        </p>
+
+        <div style="background: #F2D8D5; border: 2px solid #5A3B38; border-radius: 16px; padding: 18px; margin: 20px auto; max-width: 280px; letter-spacing: 8px; font-family: monospace; font-size: 32px; font-weight: bold; color: #5A3B38;">
+          ${otpCode}
+        </div>
+
+        <p style="font-size: 12px; color: #7B5A58; margin-top: 16px;">
+          This code is valid for 15 minutes. If you did not request this code, please ignore this email.
+        </p>
+
+        <div style="border-top: 1px border #D7B4A8; margin-top: 28px; padding-top: 16px; font-size: 11px; color: #7B5A58;">
+          The Weekend Club • Contact: shajiaazhar8@gmail.com / 03254204200
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"The Weekend Club" <${smtpUser}>`,
+        to: toEmail,
+        subject,
+        html,
+      });
+      console.log(`✅ OTP email sent to ${toEmail}.`);
+    } catch (err) {
+      console.error('❌ Failed to send OTP email:', err);
+    }
+  } else {
+    console.log(`[EMAIL DISPATCH MOCK - VERIFICATION CODE]\nTo: ${toEmail}\nOTP Code: ${otpCode}`);
+  }
 }
 
 /**

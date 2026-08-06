@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db, { initDb } from '@/lib/db';
+import { sendVerificationOtpEmail } from '@/lib/mailer';
 
 export async function POST(request: Request) {
   try {
@@ -11,38 +12,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Name, email, and password are required' }, { status: 400 });
     }
 
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existing) {
-      return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 400 });
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return NextResponse.json({ success: false, error: 'Please enter a valid email address' }, { status: 400 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    const existing = db.prepare('SELECT id, email_verified FROM users WHERE email = ?').get(cleanEmail) as any;
+    if (existing) {
+      if (existing.email_verified === 1) {
+        return NextResponse.json({ success: false, error: 'An account with this email already exists. Please sign in instead.' }, { status: 400 });
+      } else {
+        // Delete unverified stale account to allow fresh signup OTP
+        db.prepare('DELETE FROM users WHERE id = ?').run(existing.id);
+      }
+    }
+
+    // Generate random 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
+
     const stmt = db.prepare(`
-      INSERT INTO users (email, password, name, phone, role)
-      VALUES (?, ?, ?, ?, 'member')
+      INSERT INTO users (email, password, name, phone, role, email_verified, verification_code, code_expires_at)
+      VALUES (?, ?, ?, ?, 'member', 0, ?, ?)
     `);
 
-    const result = stmt.run(email, password, name, phone || '');
-    const safeUser = {
-      id: result.lastInsertRowid,
-      email,
-      name,
-      phone: phone || '',
-      role: 'member'
-    };
+    stmt.run(cleanEmail, password, name, phone || '', otpCode, expiresAt);
 
-    const response = NextResponse.json({ 
+    // Dispatch verification OTP email asynchronously
+    sendVerificationOtpEmail(cleanEmail, name, otpCode).catch(e => console.error("OTP send error:", e));
+
+    return NextResponse.json({ 
       success: true, 
-      user: safeUser,
-      message: 'Account created successfully! Welcome to the club.' 
+      requiresVerification: true,
+      email: cleanEmail,
+      message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code to complete sign up.` 
     }, { status: 201 });
-
-    response.cookies.set('weekend_user', JSON.stringify(safeUser), {
-      httpOnly: false,
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7
-    });
-
-    return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

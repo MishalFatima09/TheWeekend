@@ -32,6 +32,9 @@ export function initDb() {
       name TEXT NOT NULL,
       phone TEXT,
       role TEXT NOT NULL DEFAULT 'member',
+      email_verified INTEGER DEFAULT 0,
+      verification_code TEXT,
+      code_expires_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -83,6 +86,9 @@ export function initDb() {
   `);
 
   // Migration columns check
+  try { db.exec("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0"); } catch (e) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN verification_code TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN code_expires_at DATETIME"); } catch (e) {}
   try { db.exec("ALTER TABLE events ADD COLUMN ticket_price TEXT DEFAULT '1500'"); } catch (e) {}
   try { db.exec("ALTER TABLE events ADD COLUMN payment_info TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN payment_screenshot TEXT"); } catch (e) {}
@@ -97,19 +103,19 @@ export function initDb() {
   const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
   if (!existingAdmin) {
     db.prepare(`
-      INSERT INTO users (email, password, name, phone, role) 
-      VALUES (?, ?, 'Organizer Admin', '+92 325 4204200', 'admin')
+      INSERT INTO users (email, password, name, phone, role, email_verified) 
+      VALUES (?, ?, 'Organizer Admin', '+92 325 4204200', 'admin', 1)
     `).run(adminEmail, adminPassword);
   } else {
     // Update admin email/password if env vars are provided
-    db.prepare("UPDATE users SET email = ?, password = ? WHERE role = 'admin'").run(adminEmail, adminPassword);
+    db.prepare("UPDATE users SET email = ?, password = ?, email_verified = 1 WHERE role = 'admin'").run(adminEmail, adminPassword);
   }
 
   const memberCount = (db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'member'").get() as { count: number }).count;
   if (memberCount === 0) {
     db.prepare(`
-      INSERT INTO users (email, password, name, phone, role) 
-      VALUES ('member@weekendclub.com', 'member123', 'Weekend Member', '+92 300 1234567', 'member')
+      INSERT INTO users (email, password, name, phone, role, email_verified) 
+      VALUES ('member@weekendclub.com', 'member123', 'Weekend Member', '+92 300 1234567', 'member', 1)
     `).run();
   }
 

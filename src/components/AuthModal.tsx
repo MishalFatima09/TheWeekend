@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Sparkles, ShieldCheck, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { X, Sparkles, AlertCircle, ArrowRight, KeyRound, CheckCircle2 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,13 +10,16 @@ interface AuthModalProps {
   initialRole?: 'admin' | 'member';
 }
 
-export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
+  const [mode, setMode] = useState<'login' | 'signup' | 'verify'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -26,6 +29,28 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
     try {
       setSubmitting(true);
       setErrorMsg('');
+      setSuccessMsg('');
+
+      if (mode === 'verify') {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingEmail || email, code: otpCode })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setErrorMsg(data.error || 'Verification failed.');
+          return;
+        }
+
+        setSuccessMsg('Email verified! Account active.');
+        setTimeout(() => {
+          onLoginSuccess(data.user);
+          onClose();
+        }, 1000);
+        return;
+      }
 
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
       const body = mode === 'login' ? { email, password } : { name, email, password, phone };
@@ -40,6 +65,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
 
       if (!res.ok || !data.success) {
         setErrorMsg(data.error || 'Authentication failed.');
+        return;
+      }
+
+      if (data.requiresVerification) {
+        setPendingEmail(data.email || email);
+        setMode('verify');
+        setSuccessMsg(`A 6-digit verification code was sent to ${data.email || email}.`);
         return;
       }
 
@@ -58,7 +90,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
         
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 bg-[#F2D8D5] border-2 border-[#5A3B38] text-[#5A3B38] p-2 rounded-full hover:rotate-90 transition-transform"
+          className="absolute top-4 right-4 bg-[#F2D8D5] border-2 border-[#5A3B38] text-[#5A3B38] p-2 rounded-full hover:rotate-90 transition-transform cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -69,12 +101,23 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
             WKD
           </div>
           <h3 className="font-serif-display text-2xl font-black text-[#5A3B38]">
-            {mode === 'login' ? 'Welcome Back to the Club' : 'Create Member Account'}
+            {mode === 'login' ? 'Welcome Back to the Club' : mode === 'verify' ? 'Verify Email Address' : 'Create Member Account'}
           </h3>
           <p className="text-xs text-[#7B5A58] mt-1 font-mono">
-            {mode === 'login' ? 'Sign in to view your tickets and fast registration' : 'Join for free and unlock priority event passes'}
+            {mode === 'login' 
+              ? 'Sign in to view your tickets and fast registration' 
+              : mode === 'verify' 
+              ? `Enter the 6-digit code sent to ${pendingEmail || email}` 
+              : 'Join for free and unlock priority event passes'}
           </p>
         </div>
+
+        {successMsg && (
+          <div className="bg-[#D1FAE5] border-2 border-[#059669] text-[#065F46] p-3 rounded-2xl text-xs font-bold mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
 
         {errorMsg && (
           <div className="bg-[#FEE2E2] border-2 border-[#DC2626] text-[#991B1B] p-3 rounded-2xl text-xs font-bold mb-4 flex items-center gap-2">
@@ -84,55 +127,74 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
+          {mode === 'verify' ? (
             <div>
-              <label className="block text-xs font-bold text-[#5A3B38] mb-1">Full Name *</label>
+              <label className="block text-xs font-bold text-[#5A3B38] mb-1 font-mono uppercase tracking-wider">
+                6-Digit Verification OTP Code *
+              </label>
               <input
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Jane Doe"
-                className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="123456"
+                className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-2xl px-4 py-3 text-center text-2xl tracking-[8px] font-mono font-bold text-[#5A3B38] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
               />
             </div>
-          )}
+          ) : (
+            <>
+              {mode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-[#5A3B38] mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                  />
+                </div>
+              )}
 
-          <div>
-            <label className="block text-xs font-bold text-[#5A3B38] mb-1">Email Address *</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="member@domain.com"
-              className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
-            />
-          </div>
+              <div>
+                <label className="block text-xs font-bold text-[#5A3B38] mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="member@domain.com"
+                  className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                />
+              </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#5A3B38] mb-1">Password *</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
-            />
-          </div>
+              <div>
+                <label className="block text-xs font-bold text-[#5A3B38] mb-1">Password *</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                />
+              </div>
 
-          {mode === 'signup' && (
-            <div>
-              <label className="block text-xs font-bold text-[#5A3B38] mb-1">Phone Number (Optional)</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+92 300 1234567"
-                className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
-              />
-            </div>
+              {mode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-[#5A3B38] mb-1">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+92 300 1234567"
+                    className="w-full bg-[#FAF0EE] border-2 border-[#5A3B38] rounded-full px-4 py-2.5 text-xs text-[#342224] focus:outline-none focus:ring-2 focus:ring-[#5A3B38]"
+                  />
+                </div>
+              )}
+            </>
           )}
 
           <button
@@ -140,7 +202,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
             disabled={submitting}
             className="w-full bg-[#5A3B38] text-[#FAF0EE] border-2 border-[#5A3B38] hover:bg-[#7B5A58] py-3.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 retro-shadow transition-all disabled:opacity-50 mt-2 cursor-pointer"
           >
-            <span>{mode === 'login' ? 'Sign In to Account' : 'Create Member Account'}</span>
+            <span>
+              {mode === 'login' 
+                ? 'Sign In to Account' 
+                : mode === 'verify' 
+                ? 'Verify Code & Activate Account' 
+                : 'Send 6-Digit Verification Code'}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -150,8 +218,8 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
             <p className="text-xs text-[#7B5A58]">
               Don't have an account yet?{' '}
               <button
-                onClick={() => setMode('signup')}
-                className="font-bold text-[#5A3B38] underline"
+                onClick={() => { setMode('signup'); setErrorMsg(''); setSuccessMsg(''); }}
+                className="font-bold text-[#5A3B38] underline border-none bg-transparent cursor-pointer"
               >
                 Sign up free
               </button>
@@ -160,8 +228,8 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialRole
             <p className="text-xs text-[#7B5A58]">
               Already have an account?{' '}
               <button
-                onClick={() => setMode('login')}
-                className="font-bold text-[#5A3B38] underline border-none bg-transparent"
+                onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
+                className="font-bold text-[#5A3B38] underline border-none bg-transparent cursor-pointer"
               >
                 Sign in
               </button>
