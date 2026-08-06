@@ -1,29 +1,39 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { neon } from '@neondatabase/serverless';
 
-// Use writeable directory path if running in serverless environment
-let dbPath: string;
+// 1. Neon Postgres connection when deployed on Vercel
+const postgresUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const isPostgres = Boolean(postgresUrl);
+const sql = isPostgres ? neon(postgresUrl!) : null;
 
-try {
-  const localDb = path.join(process.cwd(), 'weekend_club.db');
-  fs.accessSync(process.cwd(), fs.constants.W_OK);
-  dbPath = localDb;
-} catch (e) {
-  dbPath = path.join('/tmp', 'weekend_club.db');
-}
+// 2. Local SQLite connection fallback for offline dev
+let db: InstanceType<typeof Database> | null = null;
 
-let db: InstanceType<typeof Database>;
+if (!isPostgres) {
+  let dbPath: string;
+  try {
+    const localDb = path.join(process.cwd(), 'weekend_club.db');
+    fs.accessSync(process.cwd(), fs.constants.W_OK);
+    dbPath = localDb;
+  } catch (e) {
+    dbPath = path.join('/tmp', 'weekend_club.db');
+  }
 
-try {
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-} catch (error) {
-  console.error("Failed to connect to SQLite file DB, falling back to memory:", error);
-  db = new Database(':memory:');
+  try {
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+  } catch (error) {
+    console.error("Failed to connect to SQLite file DB, falling back to memory:", error);
+    db = new Database(':memory:');
+  }
 }
 
 export function initDb() {
+  if (isPostgres) return;
+  if (!db) return;
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +97,6 @@ export function initDb() {
     );
   `);
 
-  // Migration columns check
   try { db.exec("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0"); } catch (e) {}
   try { db.exec("ALTER TABLE users ADD COLUMN verification_code TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE users ADD COLUMN code_expires_at DATETIME"); } catch (e) {}
@@ -99,11 +108,9 @@ export function initDb() {
   try { db.exec("ALTER TABLE registrations ADD COLUMN checked_in INTEGER DEFAULT 0"); } catch (e) {}
   try { db.exec("ALTER TABLE registrations ADD COLUMN checked_in_at TEXT"); } catch (e) {}
 
-  // Environment variable support for Custom Admin credentials
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@weekendclub.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-  // Seed default admin and member users
   const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
   if (!existingAdmin) {
     db.prepare(`
@@ -122,7 +129,6 @@ export function initDb() {
     `).run();
   }
 
-  // Clear mock events and seed real event with SadaPay details
   db.prepare("DELETE FROM events WHERE title LIKE '35mm%' OR title LIKE 'Riso%' OR title LIKE 'Vinyl%' OR title LIKE 'Vintage Poster%' OR title LIKE 'Handmade Clay%' OR title LIKE 'Super 8mm%'").run();
 
   const sadaPayDetails = 'Bank: SadaPay\nAccount Title: Sabahat Batool\nAccount Number: 03254204200';
@@ -162,6 +168,37 @@ try {
   initDb();
 } catch (e) {
   console.error("Db auto-init warning:", e);
+}
+
+// Unified Async Database Query Helpers for both Neon Postgres & Local SQLite
+export async function queryAll(sqlText: string, params: any[] = []) {
+  if (isPostgres && sql) {
+    let paramIndex = 1;
+    const pgSqlText = sqlText.replace(/\?/g, () => `$${paramIndex++}`);
+    const results = await (sql as any)(pgSqlText, params);
+    return results as any[];
+  } else if (db) {
+    return db.prepare(sqlText).all(...params) as any[];
+  }
+  return [];
+}
+
+export async function queryOne(sqlText: string, params: any[] = []) {
+  const rows = await queryAll(sqlText, params);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+export async function execute(sqlText: string, params: any[] = []) {
+  if (isPostgres && sql) {
+    let paramIndex = 1;
+    const pgSqlText = sqlText.replace(/\?/g, () => `$${paramIndex++}`);
+    await (sql as any)(pgSqlText, params);
+    return { lastInsertRowid: null };
+  } else if (db) {
+    const info = db.prepare(sqlText).run(...params);
+    return { lastInsertRowid: info.lastInsertRowid };
+  }
+  return { lastInsertRowid: null };
 }
 
 export default db;

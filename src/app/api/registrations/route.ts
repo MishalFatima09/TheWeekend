@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne, queryAll, execute } from '@/lib/db';
 import { sendAdminPendingNotification, sendAttendeeConfirmationNotification } from '@/lib/mailer';
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const seats = parseInt(guest_count || 1);
 
     // Fetch target event & check capacity
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(event_id) as any;
+    const event = await queryOne('SELECT * FROM events WHERE id = ?', [event_id]);
     if (!event) {
       return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
     }
@@ -51,15 +51,13 @@ export async function POST(request: Request) {
     const ticket_code = `WKD-${randomCode}-${randomChar}${Math.floor(Math.random() * 9)}`;
 
     // Insert registration with payment_status = 'pending' and status = 'pending_approval'
-    const stmt = db.prepare(`
+    const result = await execute(`
       INSERT INTO registrations (
         event_id, user_id, ticket_code, attendee_name, attendee_email, attendee_phone, 
         guest_count, payment_screenshot, payment_ref, payment_status, notes, status
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'pending_approval')
-    `);
-
-    const result = stmt.run(
+    `, [
       event_id, 
       user_id || null, 
       ticket_code, 
@@ -70,25 +68,37 @@ export async function POST(request: Request) {
       payment_screenshot, 
       payment_ref || '', 
       notes || ''
-    );
+    ]);
 
-    const registration = db.prepare(`
-      SELECT r.*, e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location, e.category as event_category, e.ticket_price as event_price
-      FROM registrations r
-      JOIN events e ON r.event_id = e.id
-      WHERE r.id = ?
-    `).get(result.lastInsertRowid) as any;
+    let registration = null;
+    if (result.lastInsertRowid) {
+      registration = await queryOne(`
+        SELECT r.*, e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location, e.category as event_category, e.ticket_price as event_price
+        FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        WHERE r.id = ?
+      `, [result.lastInsertRowid]);
+    } else {
+      registration = await queryOne(`
+        SELECT r.*, e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location, e.category as event_category, e.ticket_price as event_price
+        FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        WHERE r.ticket_code = ?
+      `, [ticket_code]);
+    }
 
     // Send email notification to Admin asynchronously
-    sendAdminPendingNotification({
-      ticket_code: registration.ticket_code,
-      attendee_name: registration.attendee_name,
-      attendee_email: registration.attendee_email,
-      attendee_phone: registration.attendee_phone,
-      guest_count: registration.guest_count,
-      payment_ref: registration.payment_ref,
-      event_title: registration.event_title
-    }).catch(e => console.error("Admin notification mail error:", e));
+    if (registration) {
+      sendAdminPendingNotification({
+        ticket_code: registration.ticket_code,
+        attendee_name: registration.attendee_name,
+        attendee_email: registration.attendee_email,
+        attendee_phone: registration.attendee_phone,
+        guest_count: registration.guest_count,
+        payment_ref: registration.payment_ref,
+        event_title: registration.event_title
+      }).catch(e => console.error("Admin notification mail error:", e));
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -137,7 +147,7 @@ export async function GET(request: Request) {
 
     query += ' ORDER BY r.id DESC';
 
-    const registrations = db.prepare(query).all(...params);
+    const registrations = await queryAll(query, params);
     return NextResponse.json({ success: true, registrations });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -155,28 +165,28 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Registration ID and action required' }, { status: 400 });
     }
 
-    const reg = db.prepare('SELECT * FROM registrations WHERE id = ?').get(id) as any;
+    const reg = await queryOne('SELECT * FROM registrations WHERE id = ?', [id]);
     if (!reg) {
       return NextResponse.json({ success: false, error: 'Registration not found' }, { status: 404 });
     }
 
     if (action === 'approve') {
-      db.prepare(`
+      await execute(`
         UPDATE registrations 
         SET payment_status = 'approved', status = 'confirmed' 
         WHERE id = ?
-      `).run(id);
+      `, [id]);
 
       // Increment registered_count on event
-      const event = db.prepare('SELECT * FROM events WHERE id = ?').get(reg.event_id) as any;
+      const event = await queryOne('SELECT * FROM events WHERE id = ?', [reg.event_id]);
       if (event) {
         const newCount = event.registered_count + reg.guest_count;
         const isFull = newCount >= event.capacity;
-        db.prepare('UPDATE events SET registered_count = ?, status = ? WHERE id = ?').run(
+        await execute('UPDATE events SET registered_count = ?, status = ? WHERE id = ?', [
           newCount,
           isFull ? 'full' : event.status,
           reg.event_id
-        );
+        ]);
       }
 
       // Send confirmation email to Attendee asynchronously
@@ -193,11 +203,11 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({ success: true, message: 'Payment approved! Ticket pass issued and confirmation email sent to attendee.' });
     } else if (action === 'reject') {
-      db.prepare(`
+      await execute(`
         UPDATE registrations 
         SET payment_status = 'rejected', status = 'rejected' 
         WHERE id = ?
-      `).run(id);
+      `, [id]);
 
       return NextResponse.json({ success: true, message: 'Registration rejected.' });
     }

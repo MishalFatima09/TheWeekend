@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne, execute } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -14,19 +14,19 @@ export async function POST(request: Request) {
     let reg: any = null;
     if (code) {
       const cleanCode = code.trim().toUpperCase();
-      reg = db.prepare(`
+      reg = await queryOne(`
         SELECT r.*, e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location
         FROM registrations r
         JOIN events e ON r.event_id = e.id
         WHERE UPPER(r.ticket_code) = ?
-      `).get(cleanCode) as any;
+      `, [cleanCode]);
     } else if (id) {
-      reg = db.prepare(`
+      reg = await queryOne(`
         SELECT r.*, e.title as event_title, e.date as event_date, e.time as event_time, e.location as event_location
         FROM registrations r
         JOIN events e ON r.event_id = e.id
         WHERE r.id = ?
-      `).get(id) as any;
+      `, [id]);
     }
 
     if (!reg) {
@@ -53,11 +53,11 @@ export async function POST(request: Request) {
 
     // MARK TICKET AS CHECKED IN / USED AT THE DOOR
     const checkInTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    db.prepare(`
+    await execute(`
       UPDATE registrations 
       SET checked_in = 1, checked_in_at = ? 
       WHERE id = ?
-    `).run(checkInTime, reg.id);
+    `, [checkInTime, reg.id]);
 
     reg.checked_in = 1;
     reg.checked_in_at = checkInTime;

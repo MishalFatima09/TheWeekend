@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne, execute } from '@/lib/db';
 
 export async function GET(
   request: Request,
@@ -8,7 +8,7 @@ export async function GET(
   try {
     initDb();
     const { id } = await params;
-    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+    const event = await queryOne('SELECT * FROM events WHERE id = ?', [id]);
 
     if (!event) {
       return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
@@ -30,7 +30,7 @@ export async function PUT(
     const body = await request.json();
     const { title, category, date, time, location, description, image_url, capacity, status, badge_text } = body;
 
-    const stmt = db.prepare(`
+    await execute(`
       UPDATE events 
       SET title = COALESCE(?, title),
           category = COALESCE(?, category),
@@ -43,10 +43,9 @@ export async function PUT(
           status = COALESCE(?, status),
           badge_text = COALESCE(?, badge_text)
       WHERE id = ?
-    `);
+    `, [title, category, date, time, location, description, image_url, capacity, status, badge_text, id]);
 
-    stmt.run(title, category, date, time, location, description, image_url, capacity, status, badge_text, id);
-    const updatedEvent = db.prepare('SELECT * FROM events WHERE id = ?').get(id);
+    const updatedEvent = await queryOne('SELECT * FROM events WHERE id = ?', [id]);
 
     return NextResponse.json({ success: true, event: updatedEvent });
   } catch (error: any) {
@@ -61,8 +60,8 @@ export async function DELETE(
   try {
     initDb();
     const { id } = await params;
-    db.prepare('DELETE FROM events WHERE id = ?').run(id);
-    db.prepare('DELETE FROM registrations WHERE event_id = ?').run(id);
+    await execute('DELETE FROM events WHERE id = ?', [id]);
+    await execute('DELETE FROM registrations WHERE event_id = ?', [id]);
 
     return NextResponse.json({ success: true, message: 'Event deleted successfully' });
   } catch (error: any) {

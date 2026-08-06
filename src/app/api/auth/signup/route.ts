@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne, execute } from '@/lib/db';
 import { sendVerificationOtpEmail } from '@/lib/mailer';
 
 export async function POST(request: Request) {
@@ -20,13 +20,13 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    const existing = db.prepare('SELECT id, email_verified FROM users WHERE email = ?').get(cleanEmail) as any;
+    const existing = await queryOne('SELECT id, email_verified FROM users WHERE email = ?', [cleanEmail]);
     if (existing) {
       if (existing.email_verified === 1) {
         return NextResponse.json({ success: false, error: 'An account with this email already exists. Please sign in instead.' }, { status: 400 });
       } else {
         // Delete unverified stale account to allow fresh signup OTP
-        db.prepare('DELETE FROM users WHERE id = ?').run(existing.id);
+        await execute('DELETE FROM users WHERE id = ?', [existing.id]);
       }
     }
 
@@ -34,12 +34,10 @@ export async function POST(request: Request) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
 
-    const stmt = db.prepare(`
+    await execute(`
       INSERT INTO users (email, password, name, phone, role, email_verified, verification_code, code_expires_at)
       VALUES (?, ?, ?, ?, 'member', 0, ?, ?)
-    `);
-
-    stmt.run(cleanEmail, password, name, phone || '', otpCode, expiresAt);
+    `, [cleanEmail, password, name, phone || '', otpCode, expiresAt]);
 
     // Dispatch verification OTP email asynchronously
     sendVerificationOtpEmail(cleanEmail, name, otpCode).catch(e => console.error("OTP send error:", e));

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne, execute } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanCode = code.trim();
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail) as any;
+    const user = await queryOne('SELECT * FROM users WHERE email = ?', [cleanEmail]);
 
     if (!user) {
       return NextResponse.json({ success: false, error: 'User account not found' }, { status: 404 });
@@ -34,11 +34,11 @@ export async function POST(request: Request) {
     }
 
     // Mark email as verified and clear code
-    db.prepare(`
+    await execute(`
       UPDATE users 
       SET email_verified = 1, verification_code = NULL, code_expires_at = NULL 
       WHERE id = ?
-    `).run(user.id);
+    `, [user.id]);
 
     const safeUser = {
       id: user.id,

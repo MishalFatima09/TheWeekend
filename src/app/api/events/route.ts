@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryAll, queryOne, execute } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     query += ' ORDER BY id DESC';
 
-    const events = db.prepare(query).all(...params);
+    const events = await queryAll(query, params);
     return NextResponse.json({ success: true, events });
   } catch (error: any) {
     console.error('Error fetching events:', error);
@@ -41,12 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'All fields are required' }, { status: 400 });
     }
 
-    const stmt = db.prepare(`
+    const result = await execute(`
       INSERT INTO events (title, category, date, time, location, description, image_url, capacity, registered_count, status, badge_text)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'upcoming', ?)
-    `);
-
-    const result = stmt.run(
+    `, [
       title,
       category,
       date,
@@ -56,9 +54,15 @@ export async function POST(request: Request) {
       image_url,
       capacity || 30,
       badge_text || 'NEW'
-    );
+    ]);
 
-    const newEvent = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
+    let newEvent = null;
+    if (result.lastInsertRowid) {
+      newEvent = await queryOne('SELECT * FROM events WHERE id = ?', [result.lastInsertRowid]);
+    } else {
+      newEvent = await queryOne('SELECT * FROM events WHERE title = ? ORDER BY id DESC', [title]);
+    }
+
     return NextResponse.json({ success: true, event: newEvent }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating event:', error);

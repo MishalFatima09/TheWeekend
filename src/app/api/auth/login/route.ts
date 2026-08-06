@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryOne } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         email_verified: 1
       };
     } else {
-      user = db.prepare('SELECT * FROM users WHERE email = ? AND password = ?').get(cleanEmail, password) as any;
+      user = await queryOne('SELECT * FROM users WHERE email = ? AND password = ?', [cleanEmail, password]);
     }
 
     if (!user) {

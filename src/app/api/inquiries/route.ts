@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { initDb } from '@/lib/db';
+import { initDb, queryAll, execute } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -11,12 +11,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'All contact fields are required' }, { status: 400 });
     }
 
-    const stmt = db.prepare(`
+    await execute(`
       INSERT INTO inquiries (name, email, subject, message, status)
       VALUES (?, ?, ?, ?, 'pending')
-    `);
-
-    stmt.run(name, email, subject, message);
+    `, [name, email, subject, message]);
 
     return NextResponse.json({ 
       success: true, 
@@ -30,7 +28,7 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     initDb();
-    const inquiries = db.prepare('SELECT * FROM inquiries ORDER BY id DESC').all();
+    const inquiries = await queryAll('SELECT * FROM inquiries ORDER BY id DESC');
     return NextResponse.json({ success: true, inquiries });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -47,7 +45,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Inquiry ID and status required' }, { status: 400 });
     }
 
-    db.prepare('UPDATE inquiries SET status = ? WHERE id = ?').run(status, id);
+    await execute('UPDATE inquiries SET status = ? WHERE id = ?', [status, id]);
     return NextResponse.json({ success: true, message: 'Inquiry updated successfully' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
