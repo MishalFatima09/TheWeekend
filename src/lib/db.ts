@@ -175,8 +175,8 @@ export async function queryAll(sqlText: string, params: any[] = []) {
   if (isPostgres && sql) {
     let paramIndex = 1;
     const pgSqlText = sqlText.replace(/\?/g, () => `$${paramIndex++}`);
-    const results = await (sql as any)(pgSqlText, params);
-    return results as any[];
+    const results = await (sql as any).query(pgSqlText, params);
+    return Array.isArray(results) ? results : (results?.rows || []);
   } else if (db) {
     return db.prepare(sqlText).all(...params) as any[];
   }
@@ -192,7 +192,7 @@ export async function execute(sqlText: string, params: any[] = []) {
   if (isPostgres && sql) {
     let paramIndex = 1;
     const pgSqlText = sqlText.replace(/\?/g, () => `$${paramIndex++}`);
-    await (sql as any)(pgSqlText, params);
+    await (sql as any).query(pgSqlText, params);
     return { lastInsertRowid: null };
   } else if (db) {
     const info = db.prepare(sqlText).run(...params);
